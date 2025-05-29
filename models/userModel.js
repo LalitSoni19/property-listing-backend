@@ -19,8 +19,14 @@ const userSchema = new Schema({
         type: String,
         trim: true
     },
-    // favorites:,
-    // recommendationsReceived:
+    favorites: [{
+        type: mongoose.Schema.Types.ObjectId,
+        ref: 'Property'
+    }],
+    recommendationsReceived: [{
+        type: mongoose.Schema.Types.ObjectId,
+        ref: 'User'
+    }]
 }, {
     timestamps: true
 });

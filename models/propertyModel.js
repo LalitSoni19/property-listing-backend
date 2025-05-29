@@ -4,20 +4,20 @@ const Schema = mongoose.Schema;
 const propertySchema = new Schema({
     propertyId: { // Corresponds to 'id' from CSV
         type: String,
-        required:,
+        required: true,
         unique: true,
         trim: true
     },
     title: {
         type: String,
-        required:,
+        required: true,
         trim: true
     },
-    type: { // e.g., Bungalow, Villa, Apartment
+    type: {
         type: String,
         required: true,
-        enum: // Example enum
-  },
+        enum: ['Bungalow', 'Villa', 'Apartment', 'Studio', 'Penthouse']
+    },
     price: {
         type: Number,
         required: true,
@@ -26,23 +26,25 @@ const propertySchema = new Schema({
     state: { type: String, trim: true },
     city: { type: String, trim: true },
     areaSqFt: { type: Number, min: [0, 'Area cannot be negative'] },
-    bedrooms: { type: Number, min: },
-    bathrooms: { type: Number, min: },
-    amenities: { type:, default: }, // Array of strings
+    bedrooms: { type: Number, min: [0, 'Bedroom cannot be negative'] },
+    bathrooms: { type: Number, min: [0, 'Bathroom cannot be negative'] },
+    amenities: { type: [String], default: [] },
     furnished: {
         type: String,
-        enum: 
-  },
+        enum: ['Furnished', 'Unfurnished', 'Semi'],
+        default: 'Unfurnished'
+    },
     availableFrom: { type: Date },
     listedBy: { // Owner, Agent
         type: String,
-        enum:
-  },
-    tags: { type:, default: },
+        enum: ['Owner', 'Agent', 'Builder'],
+        default: 'Owner'
+    },
+    tags: { type: [String], default: [] },
     colorTheme: { type: String, trim: true },
     rating: { type: Number, min: 0, max: 5 },
     isVerified: { type: Boolean, default: false },
-    listingType: { // Rent, Sale
+    listingType: {
         type: String,
         required: true,
         enum: ['rent', 'sale']
