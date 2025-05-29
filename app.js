@@ -8,6 +8,7 @@ app.get('/', (req, res) => {
     res.send('Welcome to the Property Listing API!');
 });
 app.use('/api/users', require('./routes/userRoutes'));
+app.use('/api/properties', require('./routes/propertyRoutes'));
 
 
 module.exports = app; 
