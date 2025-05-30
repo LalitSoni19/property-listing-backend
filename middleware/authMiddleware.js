@@ -11,7 +11,7 @@ module.exports = function (req, res, next) {
     }
 
     try {
-        const tokenValue = token.startsWith('Bearer ') ? token.split(' ') : token;
+        const tokenValue = token.startsWith('Bearer ') ? token.split(' ')[1] : token;
         const decoded = jwt.verify(tokenValue, process.env.JWT_SECRET_KEY);
 
 

@@ -1,4 +1,6 @@
 const Property = require('../models/propertyModel');
+const redisClient = require('../config/redisClient');
+const DEFAULT_EXPIRATION = 3600;
 
 // Create Property
 exports.createProperty = async (req, res) => {
@@ -125,23 +127,99 @@ exports.getAllProperties = async (req, res) => {
 
 
 
+// exports.getPropertyById = async (req, res) => {
+//     try {
+//         const property = await Property.findById(req.params.id).populate('createdBy', 'email username');
+//         if (!property) {
+//             return res.status(404).json({ msg: 'Property not found' });
+//         }
+//         res.json(property);
+//     } catch (err) {
+//         console.error(err.message);
+//         if (err.kind === 'ObjectId') {
+//             return res.status(404).json({ msg: 'Property not found (invalid ID format)' });
+//         }
+//         res.status(500).send('Server Error');
+//     }
+// };
+
+
+
+
 exports.getPropertyById = async (req, res) => {
+    const propertyId = req.params.id;
+    const cacheKey = `property:${propertyId}`;
+
     try {
-        const property = await Property.findById(req.params.id).populate('createdBy', 'email username');
+        if (redisClient.isOpen) {
+            try {
+                const cachedProperty = await redisClient.get(cacheKey);
+                if (cachedProperty) {
+                    console.log('Cache HIT for property:', propertyId);
+                    return res.json(JSON.parse(cachedProperty));
+                }
+            } catch (redisErr) {
+                console.error('Redis GET error:', redisErr);
+            }
+        }
+
+        // Cache MISS – retrieve from database
+        console.log('Cache MISS for property:', propertyId);
+        const property = await Property.findById(propertyId).populate('createdBy', 'email username');
+
         if (!property) {
             return res.status(404).json({ msg: 'Property not found' });
         }
+
+        // Save to cache
+        if (redisClient.isOpen) {
+            try {
+                await redisClient.set(cacheKey, JSON.stringify(property.toObject()), {
+                    EX: DEFAULT_EXPIRATION
+                });
+            } catch (redisErr) {
+                console.error('Redis SET error:', redisErr);
+            }
+        }
+
         res.json(property);
     } catch (err) {
         console.error(err.message);
+
+        // FOR invalid ObjectId format
         if (err.kind === 'ObjectId') {
             return res.status(404).json({ msg: 'Property not found (invalid ID format)' });
         }
+
         res.status(500).send('Server Error');
     }
 };
 
 
+
+// exports.updateProperty = async (req, res) => {
+//     try {
+//         let property = await Property.findById(req.params.id);
+//         if (!property) {
+//             return res.status(404).json({ msg: 'Property not found' });
+//         }
+
+//         // Ownership Check: Ensure only the creator can update
+//         if (property.createdBy.toString() !== req.user.id) {
+//             return res.status(401).json({ msg: 'User not authorized' });
+//         }
+
+//         property = await Property.findByIdAndUpdate(
+//             req.params.id,
+//             { $set: req.body },
+//             { new: true, runValidators: true }
+//         );
+//         res.json(property);
+//     } catch (err) {
+//         console.error(err.message);
+//         res.status(500).send('Server Error');
+//     }
+// };
 exports.updateProperty = async (req, res) => {
     try {
         let property = await Property.findById(req.params.id);
@@ -154,11 +232,23 @@ exports.updateProperty = async (req, res) => {
             return res.status(401).json({ msg: 'User not authorized' });
         }
 
+        // Update the property
         property = await Property.findByIdAndUpdate(
             req.params.id,
             { $set: req.body },
             { new: true, runValidators: true }
         );
+
+        // Invalidate cache
+        if (redisClient.isOpen) {
+            try {
+                await redisClient.del(`property:${req.params.id}`);
+                console.log(`Cache invalidated for property: ${req.params.id}`);
+            } catch (redisErr) {
+                console.error('Redis DEL error after update:', redisErr);
+            }
+        }
+
         res.json(property);
     } catch (err) {
         console.error(err.message);
@@ -167,6 +257,7 @@ exports.updateProperty = async (req, res) => {
 };
 
 
+// 
 exports.deleteProperty = async (req, res) => {
     try {
         const property = await Property.findById(req.params.id);
@@ -180,6 +271,17 @@ exports.deleteProperty = async (req, res) => {
         }
 
         await Property.findByIdAndDelete(req.params.id);
+
+        // Invalidate cache
+        if (redisClient.isOpen) {
+            try {
+                await redisClient.del(`property:${req.params.id}`);
+                console.log(`Cache invalidated for property: ${req.params.id}`);
+            } catch (redisErr) {
+                console.error('Redis DEL error after delete:', redisErr);
+            }
+        }
+
         res.json({ msg: 'Property removed' });
     } catch (err) {
         console.error(err.message);

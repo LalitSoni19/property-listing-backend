@@ -25,7 +25,7 @@ const userSchema = new Schema({
     }],
     recommendationsReceived: [{
         type: mongoose.Schema.Types.ObjectId,
-        ref: 'User'
+        ref: 'Recommendation'
     }]
 }, {
     timestamps: true
