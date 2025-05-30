@@ -3,7 +3,7 @@ const Property = require('../models/propertyModel');
 // Create Property
 exports.createProperty = async (req, res) => {
     try {
-        const newPropertyData = { ...req.body, createdBy: req.user.id }; // Add createdBy from authenticated user
+        const newPropertyData = { ...req.body, createdBy: req.user.id };
         const property = new Property(newPropertyData);
         await property.save();
         res.status(201).json(property);
@@ -13,19 +13,118 @@ exports.createProperty = async (req, res) => {
     }
 };
 
-// Get All Properties (basic version, filtering to be added)
+
+// exports.getAllProperties = async (req, res) => {
+//     try {
+//         const properties = await Property.find().populate('createdBy', 'email username');
+//         res.json(properties);
+//     } catch (err) {
+//         console.error(err.message);
+//         res.status(500).send('Server Error');
+//     }
+// };
+
+// using query parameters for filtering, sorting, and pagination
 exports.getAllProperties = async (req, res) => {
     try {
-        // Advanced filtering logic will be added here (Section V.C)
-        const properties = await Property.find().populate('createdBy', 'email username'); // Populate creator info
-        res.json(properties);
+        const query = {};
+        const {
+            type, state, city, bedrooms, bathrooms, furnished, listingType, isVerified, listedBy,
+            price_min, price_max, areaSqFt_min, areaSqFt_max, rating_min, rating_max,
+            search_title,
+            amenities_in,
+            tags_all,
+            sortBy, order = 'asc', page = 1, limit = 10
+        } = req.query;
+
+        // Exact matches
+        if (type) query.type = type;
+        if (state) query.state = state;
+        if (city) query.city = city;
+
+        const parsedBedrooms = parseInt(bedrooms, 10);
+        if (!Number.isNaN(parsedBedrooms)) query.bedrooms = parsedBedrooms;
+
+        const parsedBathrooms = parseInt(bathrooms, 10);
+        if (!Number.isNaN(parsedBathrooms)) query.bathrooms = parsedBathrooms;
+
+        if (furnished !== undefined) query.furnished = furnished === 'true';
+        if (listingType) query.listingType = listingType;
+        if (isVerified !== undefined) query.isVerified = isVerified === 'true';
+        if (listedBy) query.listedBy = listedBy;
+
+        // Range queries
+        const priceQuery = {};
+        if (price_min) priceQuery.$gte = parseFloat(price_min);
+        if (price_max) priceQuery.$lte = parseFloat(price_max);
+        if (Object.keys(priceQuery).length > 0) query.price = priceQuery;
+
+        const areaQuery = {};
+        if (areaSqFt_min) areaQuery.$gte = parseInt(areaSqFt_min, 10);
+        if (areaSqFt_max) areaQuery.$lte = parseInt(areaSqFt_max, 10);
+        if (Object.keys(areaQuery).length > 0) query.areaSqFt = areaQuery;
+
+        const ratingQuery = {};
+        if (rating_min) ratingQuery.$gte = parseFloat(rating_min);
+        if (rating_max) ratingQuery.$lte = parseFloat(rating_max);
+        if (Object.keys(ratingQuery).length > 0) query.rating = ratingQuery;
+
+        // Text search
+        if (search_title) {
+            query.$text = { $search: search_title };
+        }
+
+        // Array contains (amenities - any)
+        if (amenities_in) {
+            query.amenities = {
+                $in: amenities_in.split(',').map(item => item.trim())
+            };
+        }
+
+        // Array contains all (tags - all)
+        if (tags_all) {
+            query.tags = {
+                $all: tags_all.split(',').map(item => item.trim())
+            };
+        }
+
+        // Pagination
+        const pageNum = Math.max(parseInt(page, 10), 1);
+        const limitNum = Math.max(parseInt(limit, 10), 1);
+        const skip = (pageNum - 1) * limitNum;
+
+        // Sorting
+        const sortOptions = {};
+        if (sortBy) {
+            sortOptions[sortBy] = order === 'desc' ? -1 : 1;
+        } else {
+            sortOptions.createdAt = -1;
+        }
+
+        // Query execution
+        const properties = await Property.find(query)
+            .populate('createdBy', 'email username')
+            .sort(sortOptions)
+            .skip(skip)
+            .limit(limitNum);
+
+        const totalProperties = await Property.countDocuments(query);
+
+        res.json({
+            properties,
+            currentPage: pageNum,
+            totalPages: Math.ceil(totalProperties / limitNum),
+            totalProperties
+        });
+
     } catch (err) {
-        console.error(err.message);
+        console.error(err);
         res.status(500).send('Server Error');
     }
 };
 
-// Get Property By ID
+
+
 exports.getPropertyById = async (req, res) => {
     try {
         const property = await Property.findById(req.params.id).populate('createdBy', 'email username');
@@ -42,7 +141,7 @@ exports.getPropertyById = async (req, res) => {
     }
 };
 
-// Update Property
+
 exports.updateProperty = async (req, res) => {
     try {
         let property = await Property.findById(req.params.id);
@@ -58,7 +157,7 @@ exports.updateProperty = async (req, res) => {
         property = await Property.findByIdAndUpdate(
             req.params.id,
             { $set: req.body },
-            { new: true, runValidators: true } // Return updated doc, run schema validators
+            { new: true, runValidators: true }
         );
         res.json(property);
     } catch (err) {
@@ -67,7 +166,7 @@ exports.updateProperty = async (req, res) => {
     }
 };
 
-// Delete Property
+
 exports.deleteProperty = async (req, res) => {
     try {
         const property = await Property.findById(req.params.id);
