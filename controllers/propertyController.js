@@ -2,7 +2,7 @@ const Property = require('../models/propertyModel');
 const redisClient = require('../config/redisClient');
 const DEFAULT_EXPIRATION = 3600;
 
-// Create Property
+
 exports.createProperty = async (req, res) => {
     try {
         const newPropertyData = { ...req.body, createdBy: req.user.id };
@@ -16,17 +16,7 @@ exports.createProperty = async (req, res) => {
 };
 
 
-// exports.getAllProperties = async (req, res) => {
-//     try {
-//         const properties = await Property.find().populate('createdBy', 'email username');
-//         res.json(properties);
-//     } catch (err) {
-//         console.error(err.message);
-//         res.status(500).send('Server Error');
-//     }
-// };
 
-// using query parameters for filtering, sorting, and pagination
 exports.getAllProperties = async (req, res) => {
     try {
         const query = {};
@@ -39,7 +29,7 @@ exports.getAllProperties = async (req, res) => {
             sortBy, order = 'asc', page = 1, limit = 10
         } = req.query;
 
-        // Exact matches
+
         if (type) query.type = type;
         if (state) query.state = state;
         if (city) query.city = city;
@@ -55,7 +45,7 @@ exports.getAllProperties = async (req, res) => {
         if (isVerified !== undefined) query.isVerified = isVerified === 'true';
         if (listedBy) query.listedBy = listedBy;
 
-        // Range queries
+
         const priceQuery = {};
         if (price_min) priceQuery.$gte = parseFloat(price_min);
         if (price_max) priceQuery.$lte = parseFloat(price_max);
@@ -71,31 +61,31 @@ exports.getAllProperties = async (req, res) => {
         if (rating_max) ratingQuery.$lte = parseFloat(rating_max);
         if (Object.keys(ratingQuery).length > 0) query.rating = ratingQuery;
 
-        // Text search
+
         if (search_title) {
             query.$text = { $search: search_title };
         }
 
-        // Array contains (amenities - any)
+
         if (amenities_in) {
             query.amenities = {
                 $in: amenities_in.split(',').map(item => item.trim())
             };
         }
 
-        // Array contains all (tags - all)
+
         if (tags_all) {
             query.tags = {
                 $all: tags_all.split(',').map(item => item.trim())
             };
         }
 
-        // Pagination
+
         const pageNum = Math.max(parseInt(page, 10), 1);
         const limitNum = Math.max(parseInt(limit, 10), 1);
         const skip = (pageNum - 1) * limitNum;
 
-        // Sorting
+
         const sortOptions = {};
         if (sortBy) {
             sortOptions[sortBy] = order === 'desc' ? -1 : 1;
@@ -103,7 +93,7 @@ exports.getAllProperties = async (req, res) => {
             sortOptions.createdAt = -1;
         }
 
-        // Query execution
+
         const properties = await Property.find(query)
             .populate('createdBy', 'email username')
             .sort(sortOptions)
@@ -127,22 +117,6 @@ exports.getAllProperties = async (req, res) => {
 
 
 
-// exports.getPropertyById = async (req, res) => {
-//     try {
-//         const property = await Property.findById(req.params.id).populate('createdBy', 'email username');
-//         if (!property) {
-//             return res.status(404).json({ msg: 'Property not found' });
-//         }
-//         res.json(property);
-//     } catch (err) {
-//         console.error(err.message);
-//         if (err.kind === 'ObjectId') {
-//             return res.status(404).json({ msg: 'Property not found (invalid ID format)' });
-//         }
-//         res.status(500).send('Server Error');
-//     }
-// };
-
 
 
 
@@ -163,7 +137,6 @@ exports.getPropertyById = async (req, res) => {
             }
         }
 
-        // Cache MISS – retrieve from database
         console.log('Cache MISS for property:', propertyId);
         const property = await Property.findById(propertyId).populate('createdBy', 'email username');
 
@@ -186,7 +159,7 @@ exports.getPropertyById = async (req, res) => {
     } catch (err) {
         console.error(err.message);
 
-        // FOR invalid ObjectId format
+
         if (err.kind === 'ObjectId') {
             return res.status(404).json({ msg: 'Property not found (invalid ID format)' });
         }
@@ -195,31 +168,6 @@ exports.getPropertyById = async (req, res) => {
     }
 };
 
-
-
-// exports.updateProperty = async (req, res) => {
-//     try {
-//         let property = await Property.findById(req.params.id);
-//         if (!property) {
-//             return res.status(404).json({ msg: 'Property not found' });
-//         }
-
-//         // Ownership Check: Ensure only the creator can update
-//         if (property.createdBy.toString() !== req.user.id) {
-//             return res.status(401).json({ msg: 'User not authorized' });
-//         }
-
-//         property = await Property.findByIdAndUpdate(
-//             req.params.id,
-//             { $set: req.body },
-//             { new: true, runValidators: true }
-//         );
-//         res.json(property);
-//     } catch (err) {
-//         console.error(err.message);
-//         res.status(500).send('Server Error');
-//     }
-// };
 exports.updateProperty = async (req, res) => {
     try {
         let property = await Property.findById(req.params.id);
@@ -227,19 +175,19 @@ exports.updateProperty = async (req, res) => {
             return res.status(404).json({ msg: 'Property not found' });
         }
 
-        // Ownership Check: Ensure only the creator can update
+
         if (property.createdBy.toString() !== req.user.id) {
             return res.status(401).json({ msg: 'User not authorized' });
         }
 
-        // Update the property
+
         property = await Property.findByIdAndUpdate(
             req.params.id,
             { $set: req.body },
             { new: true, runValidators: true }
         );
 
-        // Invalidate cache
+
         if (redisClient.isOpen) {
             try {
                 await redisClient.del(`property:${req.params.id}`);
@@ -265,14 +213,14 @@ exports.deleteProperty = async (req, res) => {
             return res.status(404).json({ msg: 'Property not found' });
         }
 
-        // Ownership Check: Ensure only the creator can delete
+
         if (property.createdBy.toString() !== req.user.id) {
             return res.status(401).json({ msg: 'User not authorized' });
         }
 
         await Property.findByIdAndDelete(req.params.id);
 
-        // Invalidate cache
+
         if (redisClient.isOpen) {
             try {
                 await redisClient.del(`property:${req.params.id}`);

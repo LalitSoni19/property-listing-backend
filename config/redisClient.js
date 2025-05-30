@@ -15,7 +15,7 @@ client.on('error', (err) => {
     console.error('❌ Redis connection error:', err);
 });
 
-// Connect the client asynchronously
+
 async function connectRedis() {
     if (!client.isOpen) {
         try {

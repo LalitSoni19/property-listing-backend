@@ -35,7 +35,7 @@ const propertySchema = new Schema({
         default: 'Unfurnished'
     },
     availableFrom: { type: Date },
-    listedBy: { // Owner, Agent
+    listedBy: {
         type: String,
         enum: ['Owner', 'Agent', 'Builder'],
         default: 'Owner'

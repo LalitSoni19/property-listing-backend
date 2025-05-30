@@ -13,7 +13,7 @@ exports.registerUser = async (req, res) => {
         const salt = await bcrypt.genSalt(10);
         user.password = await bcrypt.hash(password, salt);
         await user.save();
-        // Optionally, generate a token immediately upon registration
+
         const payload = { user: { id: user.id } };
         const token = jwt.sign(payload, process.env.JWT_SECRET_KEY, { expiresIn: '1h' });
         res.status(201).json({ token, msg: 'User registered successfully' });
@@ -34,7 +34,7 @@ exports.loginUser = async (req, res) => {
         if (!isMatch) {
             return res.status(400).json({ msg: 'Invalid credentials' });
         }
-        const payload = { user: { id: user.id, email: user.email } }; // Include email in payload for additional context
+        const payload = { user: { id: user.id, email: user.email } };
         const token = jwt.sign(payload, process.env.JWT_SECRET_KEY, { expiresIn: '1h' });
         res.json({ token });
     } catch (err) {

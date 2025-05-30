@@ -12,12 +12,12 @@ const importData = async () => {
     const results = [];
     const filePath = path.join(__dirname, '../data/db424fd9fb74_1748258398689.csv');
 
-    // const defaultUserId = new mongoose.Types.ObjectId(); // Example placeholder
+    // const defaultUserId = new mongoose.Types.ObjectId(); 
 
     fs.createReadStream(filePath)
         .pipe(csv())
         .on('data', (data) => {
-            // Transform CSV data to match the Property schema
+
             const transformedData = {
                 propertyId: data.id, // Map 'id' from CSV to 'propertyId'
                 title: data.title,
@@ -39,13 +39,13 @@ const importData = async () => {
                 listingType: data.listingType,
                 // createdBy: defaultUserId, // Assign a default/system user ID for imported properties
 
-                createdBy: new mongoose.Types.ObjectId() // Placeholder - replace with actual logic
+                createdBy: new mongoose.Types.ObjectId()
             };
             results.push(transformedData);
         })
         .on('end', async () => {
             try {
-                // Clear existing properties to avoid duplicates on re-run (optional)
+                // Clear existing properties to avoid duplicates on re-run
                 // await Property.deleteMany({}); 
                 // console.log('Existing properties cleared.');
 
