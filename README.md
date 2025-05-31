@@ -56,6 +56,8 @@ The API will be available at:
 | POST   | /api/auth/login       | Login a user                  | No            | `{ "email": "test@example.com", "password": "123456" }` |
 | POST   | /api/favorites/:id    | Add property to favorites     | Yes           | -                                        |
 | GET    | /api/favorites        | List all favorite properties  | Yes           | -                                        |
+| POST   | /api/recommendations  | Recommends property           | Yes           | `{"recipientEmail":"friend@mail.com", "propertyId":"someID","Message":"check this!"}`  |
+| GET    | /api/recommendations/received  | Get all recommended property list  |  Yes  | -                                 | 
 
 
 ## ⚙️ Environment Variables
